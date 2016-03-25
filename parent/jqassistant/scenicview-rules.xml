@@ -1,0 +1,83 @@
+<!--
+
+    Hibernate ScenicView, Great Views on your Data
+
+    License: GNU Lesser General Public License (LGPL), version 2.1 or later
+    See the lgpl.txt file in the root directory or <http://www.gnu.org/licenses/lgpl-2.1.html>.
+
+-->
+<jqa:jqassistant-rules xmlns:jqa="http://www.buschmais.com/jqassistant/core/analysis/rules/schema/v1.0">
+
+    <constraint id="my-rules:PublicTypesMayNotExtendInternalTypes">
+        <description>API/SPI types must not extend/internalement internal types.</description>
+        <cypher><![CDATA[
+            MATCH
+                (clazz)-[:`EXTENDS`]->(supertype)
+            WHERE
+                NOT clazz.fqn =~".*internal.*"
+                AND NOT clazz.fqn =~".*test.*"
+                AND supertype.fqn =~".*internal.*"
+            RETURN
+                clazz
+            UNION ALL
+            MATCH
+                (clazz:`Class`)-[:`internalEMENTS`]->(supertype)
+            WHERE NOT
+                clazz.fqn =~".*internal.*"
+                AND NOT clazz.fqn =~".*test.*"
+                AND supertype.fqn =~".*internal.*"
+            RETURN
+                clazz
+        ]]></cypher>
+    </constraint>
+
+    <constraint id="my-rules:PublicMethodsMayNotExposeInternalTypes">
+        <description>API/SPI methods must not expose internal types.</description>
+        <cypher><![CDATA[
+            // return values
+            MATCH
+                (clazz)-[:`DECLARES`]->(method)-[:`RETURNS`]->(returntype)
+            WHERE
+                NOT clazz.fqn =~".*internal.*"
+                AND NOT clazz.fqn =~".*test.*"
+                AND (method.visibility="public" OR method.visibility="protected")
+                AND returntype.fqn =~ ".*internal.*"
+            RETURN
+                method
+
+            // parameters
+            UNION ALL
+            MATCH
+                (clazz)-[:`DECLARES`]->(method)-[:`HAS`]->(parameter)-[:`OF_TYPE`]->(parametertype)
+            WHERE
+                NOT clazz.fqn =~".*internal.*"
+                AND NOT clazz.fqn =~".*test.*"
+                AND (method.visibility="public" OR method.visibility="protected")
+                AND parametertype.fqn =~ ".*internal.*"
+            RETURN
+                method
+        ]]></cypher>
+    </constraint>
+
+    <constraint id="my-rules:PublicFieldsMayNotExposeInternalTypes">
+        <description>API/SPI fields must not expose internal types.</description>
+        <cypher><![CDATA[
+            MATCH
+                (clazz)-[:`DECLARES`]->(field)-[:`OF_TYPE`]->(fieldtype)
+            WHERE
+                NOT clazz.fqn =~".*internal.*"
+                AND NOT clazz.fqn =~".*test.*"
+                AND (field.visibility="public" OR field.visibility="protected")
+                AND fieldtype.fqn =~ ".*internal.*"
+            RETURN
+                field
+        ]]></cypher>
+    </constraint>
+
+    <group id="default">
+        <includeConstraint refId="my-rules:PublicTypesMayNotExtendInternalTypes" />
+        <includeConstraint refId="my-rules:PublicMethodsMayNotExposeInternalTypes" />
+        <includeConstraint refId="my-rules:PublicFieldsMayNotExposeInternalTypes" />
+    </group>
+
+</jqa:jqassistant-rules>

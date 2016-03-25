@@ -1,0 +1,213 @@
+<!--
+
+    Hibernate ScenicView, Great Views on your Data
+
+    License: GNU Lesser General Public License (LGPL), version 2.1 or later
+    See the lgpl.txt file in the root directory or <http://www.gnu.org/licenses/lgpl-2.1.html>.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>org.hibernate.scenicview</groupId>
+	<artifactId>scenicview-parent</artifactId>
+	<version>1.0-SNAPSHOT</version>
+	<packaging>pom</packaging>
+
+	<name>Hibernate ScenicView Parent</name>
+	<description>Creating great views on your data</description>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+		<version.hibernate.ogm>5.0.0-SNAPSHOT</version.hibernate.ogm>
+		<version.junit>4.12</version.junit>
+		<version.com.h2database>1.3.176</version.com.h2database>
+		<version.org.easytesting.festassert>1.4</version.org.easytesting.festassert>
+		<version.com.google.code.gson>2.2.4</version.com.google.code.gson>
+		<version.org.skyscreamer.jsonassert>1.3.0</version.org.skyscreamer.jsonassert>
+		<version.org.mongodb>3.2.2</version.org.mongodb>
+	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.hibernate.ogm</groupId>
+				<artifactId>hibernate-ogm-bom</artifactId>
+				<version>${version.hibernate.ogm}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<!-- Project modules -->
+			<dependency>
+				<groupId>${project.groupId}</groupId>
+				<artifactId>scenicview-core</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>${project.groupId}</groupId>
+				<artifactId>scenicview-core</artifactId>
+				<type>test-jar</type>
+				<version>${project.version}</version>
+			</dependency>
+
+			<!-- Backends -->
+			<dependency>
+				<groupId>org.mongodb</groupId>
+				<artifactId>mongo-java-driver</artifactId>
+				<version>${version.org.mongodb}</version>
+			</dependency>
+
+			<!-- Misc. -->
+			<dependency>
+				<groupId>net.bytebuddy</groupId>
+				<artifactId>byte-buddy</artifactId>
+				<version>1.3.5</version>
+			</dependency>
+
+			<!-- Testing -->
+			<dependency>
+				<groupId>com.h2database</groupId>
+				<artifactId>h2</artifactId>
+				<version>${version.com.h2database}</version>
+			</dependency>
+			<dependency>
+				<groupId>junit</groupId>
+				<artifactId>junit</artifactId>
+				<version>${version.junit}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.easytesting</groupId>
+				<artifactId>fest-assert</artifactId>
+				<version>${version.org.easytesting.festassert}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.google.code.gson</groupId>
+				<artifactId>gson</artifactId>
+				<version>${version.com.google.code.gson}</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.skyscreamer</groupId>
+				<artifactId>jsonassert</artifactId>
+				<version>${version.org.skyscreamer.jsonassert}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<build>
+		<pluginManagement>
+			<!-- Please keep alphabetic order -->
+			<plugins>
+				<plugin>
+					<groupId>com.buschmais.jqassistant.scm</groupId>
+					<artifactId>jqassistant-maven-plugin</artifactId>
+					<version>1.1.2</version>
+				</plugin>
+				<plugin>
+					<groupId>com.mycila</groupId>
+					<artifactId>license-maven-plugin</artifactId>
+					<version>2.11</version>
+				</plugin>
+				<plugin>
+					<groupId>io.fabric8</groupId>
+					<artifactId>docker-maven-plugin</artifactId>
+					<version>0.14.2</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.5.1</version>
+					<configuration>
+						<source>1.8</source>
+						<target>1.8</target>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-deploy-plugin</artifactId>
+					<version>2.8.2</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-failsafe-plugin</artifactId>
+					<version>2.19.1</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-jar-plugin</artifactId>
+					<version>2.6</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<version>2.19.1</version>
+				</plugin>
+				<plugin>
+					<groupId>org.codehaus.gmaven</groupId>
+					<artifactId>groovy-maven-plugin</artifactId>
+					<version>2.0</version>
+					<dependencies>
+						<dependency>
+							<groupId>org.codehaus.groovy</groupId>
+							<artifactId>groovy-all</artifactId>
+							<version>2.4.6</version>
+						</dependency>
+					</dependencies>
+				</plugin>
+				<!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+				<plugin>
+					<groupId>org.eclipse.m2e</groupId>
+					<artifactId>lifecycle-mapping</artifactId>
+					<version>1.0.0</version>
+					<configuration>
+						<lifecycleMappingMetadata>
+							<pluginExecutions>
+								<pluginExecution>
+									<pluginExecutionFilter>
+										<groupId>org.codehaus.gmaven</groupId>
+										<artifactId>groovy-maven-plugin</artifactId>
+										<versionRange>[2.0,)</versionRange>
+										<goals>
+											<goal>execute</goal>
+										</goals>
+									</pluginExecutionFilter>
+									<action>
+										<ignore></ignore>
+									</action>
+								</pluginExecution>
+							</pluginExecutions>
+						</lifecycleMappingMetadata>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+
+		<plugins>
+			<plugin>
+				<groupId>com.mycila</groupId>
+				<artifactId>license-maven-plugin</artifactId>
+				<configuration>
+					<header>${basedir}/../etc/license-header.txt</header>
+					<strictCheck>true</strictCheck>
+					<excludes>
+						<exclude>lgpl.txt</exclude>
+						<exclude>readme.md</exclude>
+						<exclude>CONTRIBUTING.md</exclude>
+						<exclude>.gitattributes</exclude>
+						<exclude>.gitignore</exclude>
+					</excludes>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>
