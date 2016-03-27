@@ -10,6 +10,7 @@ import java.io.Serializable;
 import java.util.function.Supplier;
 
 import org.hibernate.event.spi.PostInsertEvent;
+import org.hibernate.event.spi.PostUpdateEvent;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.scenicview.internal.job.DenormalizationJob;
 import org.hibernate.scenicview.internal.model.EntityStateBasedTreeTraversalSequence;
@@ -38,7 +39,26 @@ public class Denormalizer {
 		this.idType = typeProvider.getType( persister.getIdentifierType().getReturnedClass() );
 	}
 
-	public Supplier<DenormalizationTask> handleInsert(PostInsertEvent event) {
+	public Supplier<DenormalizationTask> getTaskForInsert(PostInsertEvent event) {
+		return () -> {
+			return new UpsertTaskImpl(
+					config.getCollectionName(),
+					() -> {
+						return getIdColumnSequence( event.getId() );
+					},
+					() -> {
+						return new EntityStateBasedTreeTraversalSequence(
+							typeProvider,
+							event.getState(),
+							config.getIncludedAssociations(),
+							event.getSession(),
+							event.getPersister() );
+					}
+			);
+		};
+	}
+
+	public Supplier<DenormalizationTask> getTaskForUpdate(PostUpdateEvent event) {
 		return () -> {
 			return new UpsertTaskImpl(
 					config.getCollectionName(),

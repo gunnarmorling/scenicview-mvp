@@ -148,4 +148,63 @@ public class DenormalizationPoCTest {
 				harrisonAsJson
 		);
 	}
+
+	@Test
+	public void updateReflectedInDenormalizedData() throws Exception {
+		EntityManager entityManager = entityManagerFactory.createEntityManager();
+		entityManager.getTransaction().begin();
+
+		Actor frank = new Actor();
+		frank.setName( "Franky" );
+		frank.setSalary( new Money( 98, "¥" ) );
+		frank.getRatings().addAll( Arrays.asList( 9, 8, 5, 4 ) );
+		entityManager.persist( frank );
+
+		entityManager.getTransaction().commit();
+
+		Map<String, String> actorsAsJson = SimpleJsonStoreBackend.getStore().get( "ActorWithDependencies" );
+		assertThat( actorsAsJson ).hasSize( 1 );
+
+		String frankAsJson = actorsAsJson.get( "(id=" + frank.getId() + ")" );
+		assertJsonEquals(
+				"{" +
+					"'name' : 'Franky'," +
+					"'salary_amount' : 98," +
+					"'salary_currency' : '¥'," +
+					"'ratings' : [" +
+						"4," +
+						"5," +
+						"8," +
+						"9" +
+					"]" +
+				"}",
+				frankAsJson
+		);
+
+		entityManager.clear();
+		entityManager.getTransaction().begin();
+
+		frank = entityManager.find( Actor.class, frank.getId() );
+		frank.setSalary( new Money( 120, "¥" ) );
+		frank.getRatings().clear();
+		frank.getRatings().addAll( Arrays.asList( 9, 4 ) );
+
+		entityManager.getTransaction().commit();
+
+		frankAsJson = actorsAsJson.get( "(id=" + frank.getId() + ")" );
+		assertJsonEquals(
+				"{" +
+					"'name' : 'Franky'," +
+					"'salary_amount' : 120," +
+					"'salary_currency' : '¥'," +
+					"'ratings' : [" +
+						"4," +
+						"9" +
+					"]" +
+				"}",
+				frankAsJson
+		);
+
+		entityManager.close();
+	}
 }

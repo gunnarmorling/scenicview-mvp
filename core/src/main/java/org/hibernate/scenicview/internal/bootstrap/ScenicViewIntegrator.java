@@ -26,14 +26,15 @@ public class ScenicViewIntegrator implements Integrator {
 	@Override
 	public void integrate(Metadata metadata, SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
 		EventListenerRegistry listenerRegistry = serviceRegistry.getService( EventListenerRegistry.class );
+
 		JobManager jobManager = serviceRegistry.getService( JobManager.class );
 		BackendManager backendManager = serviceRegistry.getService( BackendManager.class );
 		TransactionContextManager transactionContextManager = serviceRegistry.getService( TransactionContextManager.class );
 
-		listenerRegistry.appendListeners(
-				EventType.POST_INSERT,
-				new DenormalizationListener( jobManager, backendManager, transactionContextManager )
-		);
+		DenormalizationListener denormalizationListener = new DenormalizationListener( jobManager, backendManager, transactionContextManager );
+
+		listenerRegistry.appendListeners( EventType.POST_INSERT, denormalizationListener );
+		listenerRegistry.appendListeners( EventType.POST_UPDATE, denormalizationListener );
 	}
 
 	@Override

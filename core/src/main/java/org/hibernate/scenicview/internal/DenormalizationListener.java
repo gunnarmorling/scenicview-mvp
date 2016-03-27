@@ -12,8 +12,11 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import org.hibernate.event.spi.EventSource;
 import org.hibernate.event.spi.PostInsertEvent;
 import org.hibernate.event.spi.PostInsertEventListener;
+import org.hibernate.event.spi.PostUpdateEvent;
+import org.hibernate.event.spi.PostUpdateEventListener;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.scenicview.internal.backend.BackendManager;
@@ -21,7 +24,6 @@ import org.hibernate.scenicview.internal.backend.DenormalizationQueues;
 import org.hibernate.scenicview.internal.denormalizer.Denormalizer;
 import org.hibernate.scenicview.internal.job.JobManager;
 import org.hibernate.scenicview.internal.stereotypes.ThreadSafe;
-import org.hibernate.scenicview.internal.transaction.TransactionContext;
 import org.hibernate.scenicview.internal.transaction.TransactionContextManager;
 import org.hibernate.scenicview.spi.backend.model.DenormalizationTask;
 
@@ -29,7 +31,7 @@ import org.hibernate.scenicview.spi.backend.model.DenormalizationTask;
  * @author Gunnar Morling
  *
  */
-public class DenormalizationListener implements PostInsertEventListener {
+public class DenormalizationListener implements PostInsertEventListener, PostUpdateEventListener {
 
 	@ThreadSafe
 	private final JobManager jobManager;
@@ -52,27 +54,22 @@ public class DenormalizationListener implements PostInsertEventListener {
 
 	@Override
 	public void onPostInsert(PostInsertEvent event) {
-		TransactionContext txContext = transactionContextManager.getTransactionContext( event.getSession() );
-		DenormalizationQueues queues = txContext.computeIfAbsent( DenormalizationQueues.class, (t) -> { return new DenormalizationQueues( backendManager ); } );
-
-		List<Denormalizer> denormalizers = denormalizersByType.computeIfAbsent(
-			event.getPersister().getEntityName(),
-			entityName -> {
-				return jobManager.getJobs( entityName )
-					.stream()
-					.map( job -> {
-						return new Denormalizer(
-								(AbstractEntityPersister) event.getPersister(),
-								backendManager.getBackend( job.getConnectionId() ).getTypeProvider(),
-								job
-						);
-					} )
-					.collect( Collectors.toList() );
-			}
-		);
+		DenormalizationQueues queues = getQueues( event.getSession() );
+		List<Denormalizer> denormalizers = getDenormalizers( event.getPersister() );
 
 		for ( Denormalizer denormalizer : denormalizers ) {
-			Supplier<DenormalizationTask> task = denormalizer.handleInsert( event );
+			Supplier<DenormalizationTask> task = denormalizer.getTaskForInsert( event );
+			queues.getQueue( denormalizer.getConfig().getConnectionId() ).add( task );
+		}
+	}
+
+	@Override
+	public void onPostUpdate(PostUpdateEvent event) {
+		DenormalizationQueues queues = getQueues( event.getSession() );
+		List<Denormalizer> denormalizers = getDenormalizers( event.getPersister() );
+
+		for ( Denormalizer denormalizer : denormalizers ) {
+			Supplier<DenormalizationTask> task = denormalizer.getTaskForUpdate( event );
 			queues.getQueue( denormalizer.getConfig().getConnectionId() ).add( task );
 		}
 	}
@@ -80,5 +77,31 @@ public class DenormalizationListener implements PostInsertEventListener {
 	@Override
 	public boolean requiresPostCommitHanding(EntityPersister persister) {
 		return true;
+	}
+
+	private DenormalizationQueues getQueues(EventSource eventSource) {
+		return transactionContextManager.getTransactionContext( eventSource )
+				.computeIfAbsent(
+						DenormalizationQueues.class,
+						t -> new DenormalizationQueues( backendManager)
+		);
+	}
+
+	private List<Denormalizer> getDenormalizers(EntityPersister entityPersister) {
+		return denormalizersByType.computeIfAbsent(
+			entityPersister.getEntityName(),
+			entityName -> {
+				return jobManager.getJobs( entityName )
+					.stream()
+					.map( job -> {
+						return new Denormalizer(
+								(AbstractEntityPersister) entityPersister,
+								backendManager.getBackend( job.getConnectionId() ).getTypeProvider(),
+								job
+						);
+					} )
+					.collect( Collectors.toList() );
+			}
+		);
 	}
 }

@@ -62,7 +62,7 @@ public class MoneyUserType implements CompositeUserType {
 
 	@Override
 	public Object nullSafeGet(ResultSet rs, String[] names, SessionImplementor session, Object owner) throws HibernateException, SQLException {
-		throw new UnsupportedOperationException( "Not implemented" );
+		return new Money( rs.getLong( names[0] ), rs.getString( names[1] ) );
 	}
 
 	@Override
