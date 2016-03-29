@@ -1,0 +1,190 @@
+<!--
+
+    Hibernate ScenicView, Great Views on your Data
+
+    License: GNU Lesser General Public License (LGPL), version 2.1 or later
+    See the lgpl.txt file in the root directory or <http://www.gnu.org/licenses/lgpl-2.1.html>.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.hibernate.scenicview</groupId>
+		<artifactId>scenicview-parent</artifactId>
+		<version>1.0-SNAPSHOT</version>
+		<relativePath>../parent/pom.xml</relativePath>
+	</parent>
+
+	<artifactId>scenicview-cassandra</artifactId>
+	<packaging>jar</packaging>
+	<name>Hibernate ScenicView Cassandra Backend</name>
+
+	<properties>
+		<cassandra.port>32592</cassandra.port>
+		<cassandra.host>${env.DOCKER_HOST_IP}</cassandra.host>
+	</properties>
+
+	<dependencies>
+		<!-- Compile -->
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>scenicview-core</artifactId>
+		</dependency>
+
+		<!-- Test -->
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>scenicview-core</artifactId>
+			<type>test-jar</type>
+		</dependency>
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.easytesting</groupId>
+			<artifactId>fest-assert</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Test Runtime -->
+		<dependency>
+			<groupId>org.jboss.spec.javax.transaction</groupId>
+			<artifactId>jboss-transaction-api_1.2_spec</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<testResources>
+			<testResource>
+				<directory>src/test/resources</directory>
+				<filtering>true</filtering>
+			</testResource>
+		</testResources>
+	</build>
+	
+	<profiles>
+		<profile>
+			<id>integrationtests-using-docker</id>
+			<activation>
+				<property>
+					<name>env.DOCKER_HOST_IP</name>
+				</property>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>io.fabric8</groupId>
+						<artifactId>docker-maven-plugin</artifactId>
+						<configuration>
+							<images>
+								<image>
+									<name>cassandra</name>
+									<run>
+										<ports>
+											<port>cassandra.port:9042</port>
+										</ports>
+									</run>
+								</image>
+							</images>
+						</configuration>
+						<executions>
+							<execution>
+								<id>start</id>
+								<phase>pre-integration-test</phase>
+								<goals>
+									<goal>start</goal>
+								</goals>
+							</execution>
+							<execution>
+								<id>stop</id>
+								<phase>post-integration-test</phase>
+								<goals>
+									<goal>stop</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+		
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>integration-test</id>
+								<goals>
+									<goal>integration-test</goal>
+								</goals>
+							</execution>
+							<execution>
+								<id>verify</id>
+								<goals>
+									<goal>verify</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>docker-missing-warning</id>
+			<activation>
+				<property>
+					<name>!env.DOCKER_HOST_IP</name>
+				</property>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.gmaven</groupId>
+						<artifactId>groovy-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>docker-missing-warning</id>
+								<phase>validate</phase>
+								<goals>
+									<goal>execute</goal>
+								</goals>
+								<configuration>
+									<source>
+										println ''
+										println '-----------------------------------[WARNING]-----------------------------------'
+										println '|                                                                             |'
+										println '| Environment variable DOCKER_HOST_IP is not present, integration tests will  |'
+										println '| be skipped. Make sure that Docker is started, the shell environment is      |'
+										println '| prepared and DOCKER_HOST_IP has been exported.                              |'
+										println '|                                                                             |'
+										println '| E.g. run the following commands when using docker-machine:                  |'
+										println '|                                                                             |'
+										println '|    docker-machine start default                                             |'
+										println '|    eval "$(docker-machine env default)"                                     |'
+										println '|    export DOCKER_HOST_IP=`docker-machine ip default`                        |'
+										println '|                                                                             |'
+										println '-----------------------------------[WARNING]-----------------------------------'
+										println ''
+									</source>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+</project>

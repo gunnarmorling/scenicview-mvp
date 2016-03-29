@@ -25,6 +25,7 @@
 		<module>parent</module>
 		<module>core</module>
 		<module>mongodb</module>
+		<module>cassandra</module>
 	</modules>
 
 	<build>
