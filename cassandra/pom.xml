@@ -98,7 +98,7 @@
 						<configuration>
 							<images>
 								<image>
-									<name>cassandra</name>
+									<name>spotify/cassandra</name>
 									<alias>scenicview_cassandra</alias>
 									<run>
 										<ports>
