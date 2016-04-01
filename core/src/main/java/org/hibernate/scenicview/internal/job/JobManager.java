@@ -9,16 +9,16 @@ package org.hibernate.scenicview.internal.job;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.hibernate.scenicview.config.DenormalizationJobConfigurator;
 import org.hibernate.scenicview.config.DenormalizationJobConfigurator.Builder;
 import org.hibernate.scenicview.config.DenormalizationJobConfigurator.EntityBuildingContext;
 import org.hibernate.scenicview.config.DenormalizationJobConfigurator.JobBuildingContext;
+import org.hibernate.scenicview.internal.job.AssociationDenormalizingConfiguration.AssociationDenormalizingConfigurationBuilder;
 import org.hibernate.scenicview.internal.propertyliteral.PropertyLiteralHelper;
 import org.hibernate.scenicview.internal.stereotypes.Immutable;
 import org.hibernate.service.Service;
@@ -74,7 +74,8 @@ public class JobManager implements Service {
 
 			private final String name;
 			private final Class<T> aggregateRootType;
-			private final Set<String> includedAssociations = new HashSet<>();
+			private final Map<String, AssociationDenormalizingConfigurationBuilder> includedAssociations = new HashMap<>();
+			private AssociationDenormalizingConfigurationBuilder currentAssociation;
 			private String collectionName;
 			String connectionId;
 
@@ -85,7 +86,16 @@ public class JobManager implements Service {
 
 			@Override
 			public EntityBuildingContext<T> includingAssociation(Function<T, ?> associationProperty) {
-				includedAssociations.add( PropertyLiteralHelper.getPropertyName( aggregateRootType, associationProperty ) );
+				String propertyName = PropertyLiteralHelper.getPropertyName( aggregateRootType, associationProperty );
+				currentAssociation = new AssociationDenormalizingConfigurationBuilder( propertyName );
+				includedAssociations.put( propertyName, currentAssociation );
+
+				return this;
+			}
+
+			@Override
+			public EntityBuildingContext<T> includeId(boolean includeId) {
+				currentAssociation.includeId( includeId );
 				return this;
 			}
 
@@ -106,7 +116,9 @@ public class JobManager implements Service {
 				DenormalizationJob job = new DenormalizationJob(
 						name,
 						aggregateRootType.getName(),
-						includedAssociations,
+						includedAssociations.entrySet()
+							.stream()
+							.collect( Collectors.toMap( e -> e.getKey(), e -> e.getValue().build() ) ),
 						collectionName,
 						connectionId
 				);

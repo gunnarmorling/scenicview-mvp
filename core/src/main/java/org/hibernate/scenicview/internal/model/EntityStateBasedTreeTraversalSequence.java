@@ -9,8 +9,8 @@ package org.hibernate.scenicview.internal.model;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.spi.EntityEntry;
@@ -19,6 +19,7 @@ import org.hibernate.persister.collection.BasicCollectionPersister;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.scenicview.internal.job.AssociationDenormalizingConfiguration;
 import org.hibernate.scenicview.spi.backend.model.ColumnSequence;
 import org.hibernate.scenicview.spi.backend.model.TreeTraversalSequence;
 import org.hibernate.scenicview.spi.backend.type.DenormalizationBackendType;
@@ -39,13 +40,13 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 	private final TypeProvider typeProvider;
 	private final Deque<EventWithTree> backlog = new ArrayDeque<>();
 	private final EventSource session;
-	private final Set<String> includedAssociations;
+	private final Map<String, AssociationDenormalizingConfiguration> includedAssociations;
 
-	public EntityStateBasedTreeTraversalSequence(TypeProvider typeProvider, Object[] state, Set<String> includedAssociations, EventSource session, EntityPersister persister) {
+	public EntityStateBasedTreeTraversalSequence(TypeProvider typeProvider, Object[] state, Map<String, AssociationDenormalizingConfiguration> includedAssociations, EventSource session, EntityPersister persister) {
 		this.typeProvider = typeProvider;
 		this.session = session;
 		this.includedAssociations = includedAssociations;
-		pushObject( state, new EntityPropertiesMetadata( (AbstractEntityPersister) persister ), null, true );
+		pushObject( null, state, null, new EntityPropertiesMetadata( (AbstractEntityPersister) persister ), null, true );
 	}
 
 	@Override
@@ -58,7 +59,9 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 			if ( current.tree instanceof Object[] ) {
 				Object[] state = (Object[]) current.tree;
 				for( int i = 0; i < state.length; i++ ) {
-					if ( current.metadata.getPropertyType( i ).isCollectionType() && includedAssociations.contains( current.metadata.getPropertyName( i ) ) ) {
+					AssociationDenormalizingConfiguration associationConfig = includedAssociations.get( current.metadata.getPropertyName( i ) );
+
+					if ( current.metadata.getPropertyType( i ).isCollectionType() && associationConfig != null ) {
 						CollectionPersister collectionPersister = session.getPersistenceContext().getCollectionEntry( (PersistentCollection) state[i] ).getCurrentPersister();
 
 						pushCollection(
@@ -67,7 +70,7 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 								collectionPersister
 						);
 					}
-					else if ( current.metadata.getPropertyType( i ).isAssociationType() && includedAssociations.contains( current.metadata.getPropertyName( i ) ) ) {
+					else if ( current.metadata.getPropertyType( i ).isAssociationType() && associationConfig != null ) {
 						EntityEntry entityEntry = session.getPersistenceContext().getEntry( state[i] );
 
 						if ( entityEntry == null ) {
@@ -75,8 +78,23 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 						}
 
 						Object[] newState = entityEntry.getLoadedState();
-						EntityPersister persister = session.getEntityPersister( session.getEntityName( state[i] ), state[i] );
-						pushObject( newState, new EntityPropertiesMetadata( (AbstractEntityPersister) persister ), current.metadata.getPropertyName( i ), false );
+						AbstractEntityPersister persister = (AbstractEntityPersister) session.getEntityPersister( session.getEntityName( state[i] ), state[i] );
+
+						Object id = null;
+						IdMetadata idMetadata = null;
+						if ( associationConfig != null && associationConfig.isIncludeId() ) {
+							id = entityEntry.getId();
+							idMetadata = new IdMetadata( persister.getIdentifierType(), persister.getIdentifierColumnNames() );
+						}
+
+						pushObject(
+								id,
+								newState,
+								idMetadata,
+								new EntityPropertiesMetadata( persister ),
+								current.metadata.getPropertyName( i ),
+								false
+						);
 					}
 				}
 			}
@@ -85,10 +103,25 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 
 				if ( collectionPersister.getElementDefinition().getType().isEntityType() ) {
 					EntityPersister elementPersister = collectionPersister.getElementDefinition().toEntityDefinition().getEntityPersister();
+					AssociationDenormalizingConfiguration associationConfig = includedAssociations.get( current.getName() );
 
 					for ( Object element : (Iterable<?>) current.tree ) {
+						Object id = null;
+						IdMetadata idMetadata = null;
+						if ( associationConfig != null && associationConfig.isIncludeId() ) {
+							id = elementPersister.getIdentifier( element, session );
+							idMetadata = new IdMetadata( elementPersister.getIdentifierType(), ( (AbstractEntityPersister) elementPersister ).getIdentifierColumnNames() );
+						}
+
 						Object[] newState = elementPersister.getPropertyValues( element );
-						pushObject( newState, new EntityPropertiesMetadata( (AbstractEntityPersister) elementPersister ), null, false );
+						pushObject(
+								id,
+								newState,
+								idMetadata,
+								new EntityPropertiesMetadata( (AbstractEntityPersister) elementPersister ),
+								null,
+								false
+						);
 					}
 				}
 				// basic collection
@@ -104,22 +137,22 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 		}
 	}
 
-	private void pushObject(Object[] tree, PropertiesMetadata metadata, String name, boolean aggregateRoot) {
-		backlog.addFirst( new EventWithTree( aggregateRoot ? EventType.AGGREGATE_ROOT_END : EventType.OBJECT_END, name, null, null, null, null ) );
-		backlog.addFirst( new EventWithTree( aggregateRoot ? EventType.AGGREGATE_ROOT_START : EventType.OBJECT_START, name, null, null, tree, metadata ) );
+	private void pushObject(Object id, Object[] tree, IdMetadata idMetadata, PropertiesMetadata metadata, String name, boolean aggregateRoot) {
+		backlog.addFirst( new EventWithTree( aggregateRoot ? EventType.AGGREGATE_ROOT_END : EventType.OBJECT_END, name, null, null, id, null, idMetadata, null ) );
+		backlog.addFirst( new EventWithTree( aggregateRoot ? EventType.AGGREGATE_ROOT_START : EventType.OBJECT_START, name, null, null, id, tree, idMetadata, metadata ) );
 	}
 
 	private void pushBasic(Object tree, PropertiesMetadata metadata, String name) {
-		backlog.addFirst( new EventWithTree( EventType.OBJECT_END, name, null, null, null, null ) );
-		backlog.addFirst( new EventWithTree( EventType.OBJECT_START, name, null, null, tree, metadata ) );
+		backlog.addFirst( new EventWithTree( EventType.OBJECT_END, name, null, null, null, null, null, null ) );
+		backlog.addFirst( new EventWithTree( EventType.OBJECT_START, name, null, null, null, tree, null, metadata ) );
 	}
 
 	private void pushCollection(PersistentCollection collection, String name, CollectionPersister collectionPersister) {
 		AssociationElementKind associationElementKind = getAssociationElementKind( collectionPersister.getCollectionMetadata().getElementType() );
 		AssociationKind associationKind = getAssociationKind( collectionPersister );
 
-		backlog.addFirst( new EventWithTree( EventType.COLLECTION_END, name, associationKind, associationElementKind, null, null ) );
-		backlog.addFirst( new EventWithTree( EventType.COLLECTION_START, name, associationKind, associationElementKind, collection, null ) );
+		backlog.addFirst( new EventWithTree( EventType.COLLECTION_END, name, associationKind, associationElementKind, null, null, null, null ) );
+		backlog.addFirst( new EventWithTree( EventType.COLLECTION_START, name, associationKind, associationElementKind, null, collection, null, null ) );
 	}
 
 	private AssociationKind getAssociationKind(CollectionPersister collectionPersister) {
@@ -158,11 +191,15 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 
 		private final Object tree;
 		private final PropertiesMetadata metadata;
+		private final Object id;
+		private final IdMetadata idMetadata;
 
-		public EventWithTree(EventType type, String name, AssociationKind associationKind, AssociationElementKind associationElementKind, Object tree, PropertiesMetadata metadata) {
+		public EventWithTree(EventType type, String name, AssociationKind associationKind, AssociationElementKind associationElementKind, Object id, Object tree, IdMetadata idMetadata, PropertiesMetadata metadata) {
 			super( type, name, associationKind, associationElementKind );
 
+			this.id = id;
 			this.tree = tree;
+			this.idMetadata = idMetadata;
 			this.metadata = metadata;
 		}
 
@@ -172,7 +209,7 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 				return null;
 			}
 			if ( tree instanceof Object[] ) {
-				return new EntityStateBasedColumnSequence( typeProvider, (Object[]) tree, metadata );
+				return new EntityStateBasedColumnSequence( typeProvider, id, (Object[]) tree, idMetadata, metadata );
 			}
 			else {
 				return new BasicElementColumnSequence( typeProvider, tree, metadata );
@@ -190,18 +227,29 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 	private static class EntityStateBasedColumnSequence implements ColumnSequence {
 
 		private final TypeProvider typeProvider;
+		private final Object id;
 		private final Object[] objectState;
+		private final IdMetadata idMetadata;
 		private final PropertiesMetadata metadata;
 
-		public EntityStateBasedColumnSequence(TypeProvider typeProvider, Object[] objectState, PropertiesMetadata metadata) {
+		public EntityStateBasedColumnSequence(TypeProvider typeProvider, Object id, Object[] objectState, IdMetadata idMetadata, PropertiesMetadata metadata) {
 			this.typeProvider = typeProvider;
+			this.id = id;
 			this.objectState = objectState;
+			this.idMetadata = idMetadata;
 			this.metadata = metadata;
 		}
 
 		@Override
 		public void forEach(ColumnValueConsumer consumer) {
 			MutableVariableSizeColumnSequence receiver = new MutableVariableSizeColumnSequence();
+
+			if ( id != null ) {
+				receiver.addColumnNames( idMetadata.getColumnNames() );
+
+				DenormalizationBackendType<?> type = typeProvider.getType( idMetadata.getType().getReturnedClass() );
+				set( type, id, receiver );
+			}
 
 			for ( int i = 0; i < objectState.length; i++ ) {
 				if ( metadata.getPropertyType( i ).isAssociationType() ) {
@@ -260,6 +308,24 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 			DenormalizationBackendType<T> typedType = (DenormalizationBackendType<T>) type;
 			T typedValue = (T) value;
 			typedType.getWriter().set( typedValue, receiver );
+		}
+	}
+
+	private class IdMetadata {
+		private final Type type;
+		private final String[] columnNames;
+
+		public IdMetadata(Type type, String[] columnNames) {
+			this.type = type;
+			this.columnNames = columnNames;
+		}
+
+		Type getType() {
+			return type;
+		}
+
+		String[] getColumnNames() {
+			return columnNames;
 		}
 	}
 

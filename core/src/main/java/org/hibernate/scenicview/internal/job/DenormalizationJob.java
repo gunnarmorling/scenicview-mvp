@@ -7,7 +7,7 @@
 package org.hibernate.scenicview.internal.job;
 
 import java.util.Collections;
-import java.util.Set;
+import java.util.Map;
 
 import org.hibernate.scenicview.internal.stereotypes.Immutable;
 
@@ -23,14 +23,14 @@ public class DenormalizationJob {
 
 	// TODO support multiple levels
 	@Immutable
-	private final Set<String> includedAssociations;
+	private final Map<String, AssociationDenormalizingConfiguration> includedAssociations;
 	private final String collectionName;
 	private final String connectionId;
 
-	public DenormalizationJob(String name, String aggregateRootTypeName, Set<String> includedAssociations, String collectionName, String connectionId) {
+	public DenormalizationJob(String name, String aggregateRootTypeName, Map<String, AssociationDenormalizingConfiguration> includedAssociations, String collectionName, String connectionId) {
 		this.name = name;
 		this.aggregateRootTypeName = aggregateRootTypeName;
-		this.includedAssociations = Collections.unmodifiableSet( includedAssociations );
+		this.includedAssociations = Collections.unmodifiableMap( includedAssociations );
 		this.collectionName = collectionName;
 		this.connectionId = connectionId;
 	}
@@ -43,7 +43,7 @@ public class DenormalizationJob {
 		return aggregateRootTypeName;
 	}
 
-	public Set<String> getIncludedAssociations() {
+	public Map<String, AssociationDenormalizingConfiguration> getIncludedAssociations() {
 		return includedAssociations;
 	}
 

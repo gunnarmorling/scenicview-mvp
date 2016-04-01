@@ -40,6 +40,7 @@ public class DenormalizationPoCIT {
 				.withAggregateRoot( Actor.class )
 					.includingAssociation( Actor::getFavoriteGenre )
 					.includingAssociation( Actor::getPlayedIn )
+						.includeId( true )
 					.includingAssociation( Actor::getRatings )
 				.withCollectionName( "ActorWithDependencies" )
 				.withConnectionId( "some-cassandra" )
@@ -64,9 +65,10 @@ public class DenormalizationPoCIT {
 						"favoriteGenre_name text," +
 						"favoriteGenre_suitedForChildren boolean," +
 						"ratings list<int>," +
+						"playedIn_id bigint," +
 						"playedIn_name text," +
 						"playedIn_yearOfRelease int," +
-						"PRIMARY KEY ((id), playedIn_name, playedIn_yearOfRelease)" +
+						"PRIMARY KEY (id, playedIn_id)" +
 				");"
 		);
 	}
@@ -125,8 +127,9 @@ public class DenormalizationPoCIT {
 		assertThat( row.getString( "favoriteGenre_name" ) ).isEqualTo( "Thriller" );
 		assertThat( row.getBool( "favoriteGenre_suitedForChildren" ) ).isEqualTo( false );
 		assertThat( row.getList( "ratings", Integer.class ) ).containsOnly( 9, 8, 5, 4 );
-		assertThat( row.getString( "playedIn_name" ) ).isEqualTo( "If you knew" );
-		assertThat( row.getInt( "playedIn_yearOfRelease" ) ).isEqualTo( 1965 );
+		assertThat( row.getLong( "playedIn_id" ) ).isEqualTo( movie1.getId() );
+		assertThat( row.getString( "playedIn_name" ) ).isEqualTo( "It happened in the winter" );
+		assertThat( row.getInt( "playedIn_yearOfRelease" ) ).isEqualTo( 1980 );
 
 		row = it.next();
 
@@ -137,8 +140,9 @@ public class DenormalizationPoCIT {
 		assertThat( row.getString( "favoriteGenre_name" ) ).isEqualTo( "Thriller" );
 		assertThat( row.getBool( "favoriteGenre_suitedForChildren" ) ).isEqualTo( false );
 		assertThat( row.getList( "ratings", Integer.class ) ).containsOnly( 9, 8, 5, 4 );
-		assertThat( row.getString( "playedIn_name" ) ).isEqualTo( "It happened in the winter" );
-		assertThat( row.getInt( "playedIn_yearOfRelease" ) ).isEqualTo( 1980 );
+		assertThat( row.getLong( "playedIn_id" ) ).isEqualTo( movie2.getId() );
+		assertThat( row.getString( "playedIn_name" ) ).isEqualTo( "If you knew" );
+		assertThat( row.getInt( "playedIn_yearOfRelease" ) ).isEqualTo( 1965 );
 
 		assertThat( it.hasNext() ).isFalse();
 	}

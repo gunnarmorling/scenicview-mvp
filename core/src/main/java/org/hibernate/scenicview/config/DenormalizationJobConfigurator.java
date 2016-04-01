@@ -36,6 +36,8 @@ public interface DenormalizationJobConfigurator {
 
 		EntityBuildingContext<T> includingAssociation(Function<T, ?> associationProperty);
 
+		EntityBuildingContext<T> includeId(boolean includeId);
+
 		EntityBuildingContext<T> withConnectionId(String connectionId);
 
 		EntityBuildingContext<T> withCollectionName(String collectionName);
