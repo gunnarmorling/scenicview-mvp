@@ -109,10 +109,12 @@
 							<images>
 								<image>
 									<name>mongo</name>
+									<alias>scenicview_mongo</alias>
 									<run>
 										<ports>
 											<port>mongodb.port:27017</port>
 										</ports>
+										<namingStrategy>alias</namingStrategy>
 									</run>
 								</image>
 							</images>

@@ -22,6 +22,8 @@ public class Movie {
 
 	private String name;
 
+	private int yearOfRelease;
+
 	public long getId() {
 		return id;
 	}
@@ -38,4 +40,11 @@ public class Movie {
 		this.name = name;
 	}
 
+	public int getYearOfRelease() {
+		return yearOfRelease;
+	}
+
+	public void setYearOfRelease(int yearOfRelease) {
+		this.yearOfRelease = yearOfRelease;
+	}
 }

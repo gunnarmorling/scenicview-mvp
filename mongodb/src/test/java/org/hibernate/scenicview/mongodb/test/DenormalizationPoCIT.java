@@ -70,10 +70,12 @@ public class DenormalizationPoCIT {
 
 		Movie movie1 = new Movie();
 		movie1.setName( "It happened in the winter" );
+		movie1.setYearOfRelease( 1980 );
 		entityManager.persist( movie1 );
 
 		Movie movie2 = new Movie();
 		movie2.setName( "If you knew" );
+		movie2.setYearOfRelease( 1965 );
 		entityManager.persist( movie2 );
 
 		Genre thriller = new Genre();
@@ -105,8 +107,14 @@ public class DenormalizationPoCIT {
 					// "'salary_amount' : 98," +
 					"'salary_currency' : '¥'," +
 					"'playedIn' : [" +
-						"'It happened in the winter'," +
-						"'If you knew'" +
+						"{" +
+							" 'name' : 'It happened in the winter'," +
+							" 'yearOfRelease' : 1980" +
+						"}," +
+						"{" +
+							" 'name' : 'If you knew'," +
+							" 'yearOfRelease' : 1965" +
+						"}" +
 					"]," +
 					"'ratings' : [" +
 						"4," +

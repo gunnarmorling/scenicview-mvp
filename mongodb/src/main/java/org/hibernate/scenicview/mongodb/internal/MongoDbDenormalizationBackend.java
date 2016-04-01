@@ -91,35 +91,37 @@ public class MongoDbDenormalizationBackend implements DenormalizationBackend {
 		private Document getAsDocument(TreeTraversalSequence sequence) {
 			Deque<Object> hierarchy = new ArrayDeque<>();
 
-			sequence.forEach( ( eventType, name, properties ) -> {
-				switch( eventType ) {
-					case AGGREGATE_ROOT_START:
-						hierarchy.push( toDocument( properties ) );
-						break;
-					case AGGREGATE_ROOT_END:
-						break;
-					case OBJECT_START:
-						Document document = toDocument( properties );
-						addToParent( hierarchy, document, name );
-						hierarchy.push( document );
-						break;
-					case OBJECT_END:
-						hierarchy.pop();
-						break;
-					case COLLECTION_START:
-						List<Object> list = new ArrayList<>();
-						addToParent( hierarchy, list, name );
-						hierarchy.push( list );
-						break;
-					case COLLECTION_END:
-						List<Object> builtArray = (List<Object>) hierarchy.pop();
+			sequence.forEach(
+					null,
+					( event, context ) -> {
+						switch( event.getType() ) {
+							case AGGREGATE_ROOT_START:
+								hierarchy.push( toDocument( event.getColumnSequence() ) );
+								break;
+							case AGGREGATE_ROOT_END:
+								break;
+							case OBJECT_START:
+								Document document = toDocument( event.getColumnSequence() );
+								addToParent( hierarchy, document, event.getName() );
+								hierarchy.push( document );
+								break;
+							case OBJECT_END:
+								hierarchy.pop();
+								break;
+							case COLLECTION_START:
+								List<Object> list = new ArrayList<>();
+								addToParent( hierarchy, list, event.getName() );
+								hierarchy.push( list );
+								break;
+							case COLLECTION_END:
+								List<Object> builtArray = (List<Object>) hierarchy.pop();
 
-						// Don't keep empty arrays in the final object
-						if ( builtArray.size() == 0 ) {
-							( (Document) hierarchy.getLast() ).remove( name );
+								// Don't keep empty arrays in the final object
+								if ( builtArray.size() == 0 ) {
+									( (Document) hierarchy.getLast() ).remove( event.getName() );
+								}
+								break;
 						}
-						break;
-				}
 			} );
 
 			return (Document) hierarchy.pop();

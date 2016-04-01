@@ -32,6 +32,10 @@
 			<groupId>${project.groupId}</groupId>
 			<artifactId>scenicview-core</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.datastax.cassandra</groupId>
+			<artifactId>cassandra-driver-core</artifactId>
+		</dependency>
 
 		<!-- Test -->
 		<dependency>
@@ -95,10 +99,20 @@
 							<images>
 								<image>
 									<name>cassandra</name>
+									<alias>scenicview_cassandra</alias>
 									<run>
 										<ports>
 											<port>cassandra.port:9042</port>
 										</ports>
+										<wait>
+											<tcp>
+												<ports>
+													<port>9042</port>
+												</ports>
+											</tcp>
+											<time>20000</time>
+										</wait>
+										<namingStrategy>alias</namingStrategy>
 									</run>
 								</image>
 							</images>

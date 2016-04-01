@@ -9,6 +9,7 @@ package org.hibernate.scenicview.internal.model;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.Objects;
 import java.util.Set;
 
 import org.hibernate.collection.spi.PersistentCollection;
@@ -23,6 +24,10 @@ import org.hibernate.scenicview.spi.backend.model.TreeTraversalSequence;
 import org.hibernate.scenicview.spi.backend.type.DenormalizationBackendType;
 import org.hibernate.scenicview.spi.backend.type.DenormalizationBackendType.ColumnValueReceiver;
 import org.hibernate.scenicview.spi.backend.type.TypeProvider;
+import org.hibernate.type.CollectionType;
+import org.hibernate.type.ListType;
+import org.hibernate.type.MapType;
+import org.hibernate.type.SetType;
 import org.hibernate.type.Type;
 
 /**
@@ -32,7 +37,7 @@ import org.hibernate.type.Type;
 public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSequence {
 
 	private final TypeProvider typeProvider;
-	private final Deque<Event> backlog = new ArrayDeque<>();
+	private final Deque<EventWithTree> backlog = new ArrayDeque<>();
 	private final EventSource session;
 	private final Set<String> includedAssociations;
 
@@ -44,8 +49,8 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 	}
 
 	@Override
-	public void forEach(TreeTraversalEventConsumer consumer) {
-		Event current;
+	public <T> void forEach(T traversalContext, TreeTraversalEventConsumer<T> consumer) {
+		EventWithTree current;
 
 		while( !backlog.isEmpty() ) {
 			current = backlog.pollFirst();
@@ -54,9 +59,12 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 				Object[] state = (Object[]) current.tree;
 				for( int i = 0; i < state.length; i++ ) {
 					if ( current.metadata.getPropertyType( i ).isCollectionType() && includedAssociations.contains( current.metadata.getPropertyName( i ) ) ) {
+						CollectionPersister collectionPersister = session.getPersistenceContext().getCollectionEntry( (PersistentCollection) state[i] ).getCurrentPersister();
+
 						pushCollection(
 								(PersistentCollection) state[i],
-								current.metadata.getPropertyName( i )
+								current.metadata.getPropertyName( i ),
+								collectionPersister
 						);
 					}
 					else if ( current.metadata.getPropertyType( i ).isAssociationType() && includedAssociations.contains( current.metadata.getPropertyName( i ) ) ) {
@@ -68,7 +76,7 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 
 						Object[] newState = entityEntry.getLoadedState();
 						EntityPersister persister = session.getEntityPersister( session.getEntityName( state[i] ), state[i] );
-						pushObject( newState, new EntityPropertiesMetadata( (AbstractEntityPersister) persister ), current.metadata .getPropertyName( i ), false );
+						pushObject( newState, new EntityPropertiesMetadata( (AbstractEntityPersister) persister ), current.metadata.getPropertyName( i ), false );
 					}
 				}
 			}
@@ -91,65 +99,93 @@ public class EntityStateBasedTreeTraversalSequence implements TreeTraversalSeque
 				}
 			}
 
-			ColumnSequence columnSequence;
-			if ( current.tree instanceof PersistentCollection ) {
-				columnSequence = null;
-			}
-			if (current.tree instanceof Object[] ) {
-				columnSequence = new EntityStateBasedColumnSequence( typeProvider, (Object[]) current.tree, current.metadata );
-			}
-			else {
-				columnSequence = new BasicElementColumnSequence( typeProvider, current.tree, current.metadata );
-			}
 
-			consumer.consume( current.eventType, current.name, columnSequence );
+			consumer.consume( current, traversalContext );
 		}
 	}
 
 	private void pushObject(Object[] tree, PropertiesMetadata metadata, String name, boolean aggregateRoot) {
-		backlog.addFirst( new Event( aggregateRoot ? EventType.AGGREGATE_ROOT_END : EventType.OBJECT_END, name, metadata, null ) );
-		backlog.addFirst( new Event( aggregateRoot ? EventType.AGGREGATE_ROOT_START : EventType.OBJECT_START, name, metadata, tree ) );
+		backlog.addFirst( new EventWithTree( aggregateRoot ? EventType.AGGREGATE_ROOT_END : EventType.OBJECT_END, name, null, null, null, null ) );
+		backlog.addFirst( new EventWithTree( aggregateRoot ? EventType.AGGREGATE_ROOT_START : EventType.OBJECT_START, name, null, null, tree, metadata ) );
 	}
 
 	private void pushBasic(Object tree, PropertiesMetadata metadata, String name) {
-		backlog.addFirst( new Event( EventType.OBJECT_END, name, metadata, null ) );
-		backlog.addFirst( new Event( EventType.OBJECT_START, name, metadata, tree ) );
+		backlog.addFirst( new EventWithTree( EventType.OBJECT_END, name, null, null, null, null ) );
+		backlog.addFirst( new EventWithTree( EventType.OBJECT_START, name, null, null, tree, metadata ) );
 	}
 
-	private void pushCollection(PersistentCollection collection, String name) {
-		backlog.addFirst( new Event( EventType.COLLECTION_END, name, null, null ) );
-		backlog.addFirst( new Event( EventType.COLLECTION_START, name, null, collection ) );
+	private void pushCollection(PersistentCollection collection, String name, CollectionPersister collectionPersister) {
+		AssociationElementKind associationElementKind = getAssociationElementKind( collectionPersister.getCollectionMetadata().getElementType() );
+		AssociationKind associationKind = getAssociationKind( collectionPersister );
+
+		backlog.addFirst( new EventWithTree( EventType.COLLECTION_END, name, associationKind, associationElementKind, null, null ) );
+		backlog.addFirst( new EventWithTree( EventType.COLLECTION_START, name, associationKind, associationElementKind, collection, null ) );
 	}
 
-	private static class Event {
-		private final EventType eventType;
-		private final String name;
-		private final PropertiesMetadata metadata;
+	private AssociationKind getAssociationKind(CollectionPersister collectionPersister) {
+		CollectionType collectionType = collectionPersister.getCollectionType();
+
+		if ( collectionType.isArrayType() ) {
+			return AssociationKind.LIST;
+		}
+		else if ( collectionType instanceof SetType ) {
+			return AssociationKind.SET;
+		}
+		else if ( collectionType instanceof MapType ) {
+			return AssociationKind.MAP;
+		}
+		else if ( collectionType instanceof ListType ) {
+			return AssociationKind.LIST;
+		}
+		else {
+			return AssociationKind.BAG;
+		}
+	}
+
+	private AssociationElementKind getAssociationElementKind(Type collectionElementType) {
+		if ( collectionElementType.isEntityType() ) {
+			return AssociationElementKind.ENTITY;
+		}
+		else if ( collectionElementType.isComponentType() ) {
+			return AssociationElementKind.EMBEDDABLE;
+		}
+		else {
+			return AssociationElementKind.BASIC;
+		}
+	}
+
+	private class EventWithTree extends TreeTraversalEventBase {
+
 		private final Object tree;
+		private final PropertiesMetadata metadata;
 
-		public Event(EventType eventType, String name, PropertiesMetadata metadata, Object tree) {
-			this.eventType = eventType;
-			this.name = name;
-			this.metadata = metadata;
+		public EventWithTree(EventType type, String name, AssociationKind associationKind, AssociationElementKind associationElementKind, Object tree, PropertiesMetadata metadata) {
+			super( type, name, associationKind, associationElementKind );
+
 			this.tree = tree;
+			this.metadata = metadata;
+		}
+
+		@Override
+		public ColumnSequence getColumnSequence() {
+			if ( tree instanceof PersistentCollection ) {
+				return null;
+			}
+			if ( tree instanceof Object[] ) {
+				return new EntityStateBasedColumnSequence( typeProvider, (Object[]) tree, metadata );
+			}
+			else {
+				return new BasicElementColumnSequence( typeProvider, tree, metadata );
+			}
 		}
 
 		@Override
 		public String toString() {
-			String tree = null;
-
-			if ( this.tree != null ) {
-				if ( this.tree instanceof Object[] ) {
-					tree = Arrays.toString( (Object[]) this.tree );
-				}
-				else {
-					tree = tree.toString();
-				}
-			}
-
-			return "[" + eventType + ": name=" + name + "; tree=" + tree + "]";
+			String treeAsString = tree instanceof Object[] ? Arrays.toString( (Object[]) tree ) : Objects.toString( tree );
+			return "EventWithTree [type=" + getType() + ", tree=" + treeAsString + "]";
 		}
 	}
+
 
 	private static class EntityStateBasedColumnSequence implements ColumnSequence {
 

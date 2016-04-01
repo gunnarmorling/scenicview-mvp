@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.hibernate.scenicview.internal.model.TreeTraversalEventBase;
 import org.hibernate.scenicview.spi.backend.model.ColumnSequence;
 import org.hibernate.scenicview.spi.backend.model.TreeTraversalSequence;
 
@@ -21,17 +22,17 @@ import org.hibernate.scenicview.spi.backend.model.TreeTraversalSequence;
  *
  * @author Gunnar Morling
  */
-class MapTreeTraversalSequence implements TreeTraversalSequence {
+public class MapTreeTraversalSequence implements TreeTraversalSequence {
 
-	private final Deque<Event> backlog = new ArrayDeque<>();
+	private final Deque<EventImpl> backlog = new ArrayDeque<>();
 
 	public MapTreeTraversalSequence(Map<String, Object> tree) {
 		push( tree, null, true );
 	}
 
 	@Override
-	public void forEach(TreeTraversalEventConsumer consumer) {
-		Event current;
+	public <T> void forEach(T context, TreeTraversalEventConsumer<T> consumer) {
+		EventImpl current;
 
 		while( !backlog.isEmpty() ) {
 			current = backlog.pollFirst();
@@ -57,37 +58,31 @@ class MapTreeTraversalSequence implements TreeTraversalSequence {
 				}
 			}
 
-			consumer.consume(
-					current.eventType,
-					current.name,
-					current.tree instanceof Map ? new MapBasedColumnSequence( (Map<String, Object>) current.tree ) : null
-			);
+			consumer.consume( current, context );
 		}
 	}
 	private void push(Map<String, Object> tree, String name, boolean aggregateRoot) {
-		backlog.addFirst( new Event( aggregateRoot ? EventType.AGGREGATE_ROOT_END : EventType.OBJECT_END, name, null ) );
-		backlog.addFirst( new Event( aggregateRoot ? EventType.AGGREGATE_ROOT_START : EventType.OBJECT_START, name, tree ) );
+		backlog.addFirst( new EventImpl( aggregateRoot ? EventType.AGGREGATE_ROOT_END : EventType.OBJECT_END, name, null, null, null ) );
+		backlog.addFirst( new EventImpl( aggregateRoot ? EventType.AGGREGATE_ROOT_START : EventType.OBJECT_START, name, null, null, tree ) );
 	}
 
 	private void push(List<Map<String, Object>> list, String name) {
-		backlog.addFirst( new Event( EventType.COLLECTION_END, name, null ) );
-		backlog.addFirst( new Event( EventType.COLLECTION_START, name, list ) );
+		backlog.addFirst( new EventImpl( EventType.COLLECTION_END, name, AssociationKind.LIST, AssociationElementKind.ENTITY, null ) );
+		backlog.addFirst( new EventImpl( EventType.COLLECTION_START, name, AssociationKind.LIST, AssociationElementKind.ENTITY, list ) );
 	}
 
-	private static class Event {
-		final Object tree;
-		final EventType eventType;
-		final String name;
+	private static class EventImpl extends TreeTraversalEventBase {
 
-		public Event(EventType eventType, String name, Object tree) {
-			this.eventType = eventType;
-			this.name = name;
+		private final Object tree;
+
+		public EventImpl(EventType type, String name, AssociationKind associationKind, AssociationElementKind associationElementKind, Object tree) {
+			super( type, name, associationKind, associationElementKind );
 			this.tree = tree;
 		}
 
 		@Override
-		public String toString() {
-			return eventType + " (" + name + ")";
+		public ColumnSequence getColumnSequence() {
+			return tree instanceof Map ? new MapBasedColumnSequence( (Map<String, Object>) tree ) : null;
 		}
 	}
 

@@ -80,35 +80,37 @@ public class SimpleJsonStoreBackend implements DenormalizationBackend {
 	private JsonElement getAsJsonObject(TreeTraversalSequence sequence) {
 		Deque<JsonElement> hierarchy = new ArrayDeque<>();
 
-		sequence.forEach( ( eventType, name, properties ) -> {
-			switch( eventType ) {
-				case AGGREGATE_ROOT_START:
-					hierarchy.push( toJsonObject( properties ) );
-					break;
-				case AGGREGATE_ROOT_END:
-					break;
-				case OBJECT_START:
-					JsonObject jsonObject = toJsonObject( properties );
-					addToParent( hierarchy, jsonObject, name );
-					hierarchy.push( jsonObject );
-					break;
-				case OBJECT_END:
-					hierarchy.pop();
-					break;
-				case COLLECTION_START:
-					JsonArray jsonArray = new JsonArray();
-					addToParent( hierarchy, jsonArray, name );
-					hierarchy.push( jsonArray );
-					break;
-				case COLLECTION_END:
-					JsonArray builtArray = hierarchy.pop().getAsJsonArray();
+		sequence.forEach(
+				null,
+				( event, context ) -> {
+					switch( event.getType() ) {
+						case AGGREGATE_ROOT_START:
+							hierarchy.push( toJsonObject( event.getColumnSequence() ) );
+							break;
+						case AGGREGATE_ROOT_END:
+							break;
+						case OBJECT_START:
+							JsonObject jsonObject = toJsonObject( event.getColumnSequence() );
+							addToParent( hierarchy, jsonObject, event.getName() );
+							hierarchy.push( jsonObject );
+							break;
+						case OBJECT_END:
+							hierarchy.pop();
+							break;
+						case COLLECTION_START:
+							JsonArray jsonArray = new JsonArray();
+							addToParent( hierarchy, jsonArray, event.getName() );
+							hierarchy.push( jsonArray );
+							break;
+						case COLLECTION_END:
+							JsonArray builtArray = hierarchy.pop().getAsJsonArray();
 
-					// Don't keep empty arrays in the final JSON
-					if ( builtArray.size() == 0 ) {
-						hierarchy.getLast().getAsJsonObject().remove( name );
+							// Don't keep empty arrays in the final JSON
+							if ( builtArray.size() == 0 ) {
+								hierarchy.getLast().getAsJsonObject().remove( event.getName() );
+							}
+							break;
 					}
-					break;
-			}
 		} );
 
 		return hierarchy.pop();

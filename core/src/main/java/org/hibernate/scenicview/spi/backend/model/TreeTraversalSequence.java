@@ -16,21 +16,43 @@ public interface TreeTraversalSequence {
 	/**
 	 * Invokes the given consumer for each event of this traversal sequence, in sequential order.
 	 */
-	void forEach(TreeTraversalEventConsumer consumer);
+	<T> void forEach(T traversalContext, TreeTraversalEventConsumer<T> consumer);
 
-	public interface TreeTraversalEventConsumer {
+	public interface TreeTraversalEventConsumer<T> {
 
 		/**
 		 * Invoked during traversal by the tree walking routine.
 		 *
 		 * @param eventType The type of a single event
-		 * @param name The property name of the traversed property or {@code null} if the event is of type
-		 * {@link EventType#AGGREGATE_ROOT_START} or {@link EventType#AGGREGATE_ROOT_END}.
+		 * @param name The property name of the traversed property or {@code null} when stepping into an object which is
+		 * part of a collection or the event is of type {@link EventType#AGGREGATE_ROOT_START} or
+		 * {@link EventType#AGGREGATE_ROOT_END}.
 		 * @param columns The columns of the traversed object if the current even is
-		 * {@link EventType#AGGREGATE_ROOT_START} or {@link EventType#AGGREGATE_ROOT_END}; {@code null} otherwise.
+		 * {@link EventType#AGGREGATE_ROOT_START} or {@link EventType#COLLECTION_START}; {@code null} otherwise.
 		 */
 		// TODO: Expose property name and column names?
-		void consume(EventType eventType, String name, ColumnSequence columns);
+		void consume(TreeTraversalEvent event, T context);
+	}
+
+	public interface TreeTraversalEvent {
+		EventType getType();
+		String getName();
+		ColumnSequence getColumnSequence();
+		AssociationKind getAssociationKind();
+		AssociationElementKind getAssociationElementKind();
+	}
+
+	public enum AssociationKind {
+		BAG,
+		LIST,
+		SET,
+		MAP;
+	}
+
+	public enum AssociationElementKind {
+		BASIC,
+		EMBEDDABLE,
+		ENTITY
 	}
 
 	public enum EventType {

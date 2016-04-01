@@ -35,25 +35,27 @@ public class TableCreationTest {
 
 		Deque<String> path = new ArrayDeque<>();
 
-		sequence.forEach( ( event, name, properties ) -> {
-			switch( event ) {
-				case AGGREGATE_ROOT_START:
-					addProperties( properties, row, path );
-					break;
-				case AGGREGATE_ROOT_END:
-					break;
-				case OBJECT_START:
-					path.push( name );
-					addProperties( properties, row, path );
-					break;
-				case OBJECT_END:
-					path.pop();
-					break;
-				case COLLECTION_START:
-					throw new UnsupportedOperationException();
-				case COLLECTION_END:
-					throw new UnsupportedOperationException();
-			}
+		sequence.forEach(
+				null,
+				( event, context ) -> {
+					switch( event.getType() ) {
+						case AGGREGATE_ROOT_START:
+							addProperties( event.getColumnSequence(), row, path );
+							break;
+						case AGGREGATE_ROOT_END:
+							break;
+						case OBJECT_START:
+							path.push( event.getName() );
+							addProperties( event.getColumnSequence(), row, path );
+							break;
+						case OBJECT_END:
+							path.pop();
+							break;
+						case COLLECTION_START:
+							throw new UnsupportedOperationException();
+						case COLLECTION_END:
+							throw new UnsupportedOperationException();
+					}
 		} );
 
 		return Collections.singletonList( row );

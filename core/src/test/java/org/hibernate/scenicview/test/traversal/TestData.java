@@ -17,7 +17,7 @@ import java.util.Map;
  */
 public class TestData {
 
-	static Map<String, Object> getPersonWithAddress() {
+	public static Map<String, Object> getPersonWithAddress() {
 		Map<String, Object> country = new HashMap<>();
 		country.put( "name", "Germany" );
 
@@ -34,7 +34,7 @@ public class TestData {
 		return person;
 	}
 
-	static Map<String, Object> getPersonWithAddressAndHobbiesAndContacts() {
+	public static Map<String, Object> getPersonWithAddressAndHobbiesAndContacts() {
 		Map<String, Object> contacts = new HashMap<>();
 		contacts.put( "phone", "123/456" );
 		contacts.put( "email", "bob@example.com" );

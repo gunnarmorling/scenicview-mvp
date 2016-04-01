@@ -22,12 +22,13 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
 		<version.hibernate.ogm>5.0.0-SNAPSHOT</version.hibernate.ogm>
-		<version.junit>4.12</version.junit>
-		<version.com.h2database>1.3.176</version.com.h2database>
-		<version.org.easytesting.festassert>1.4</version.org.easytesting.festassert>
+		<version.com.datastax.cassandra>3.0.0</version.com.datastax.cassandra>
 		<version.com.google.code.gson>2.2.4</version.com.google.code.gson>
-		<version.org.skyscreamer.jsonassert>1.3.0</version.org.skyscreamer.jsonassert>
+		<version.com.h2database>1.3.176</version.com.h2database>
+		<version.junit>4.12</version.junit>
+		<version.org.easytesting.festassert>1.4</version.org.easytesting.festassert>
 		<version.org.mongodb>3.2.2</version.org.mongodb>
+		<version.org.skyscreamer.jsonassert>1.3.0</version.org.skyscreamer.jsonassert>
 	</properties>
 
 	<dependencyManagement>
@@ -58,6 +59,11 @@
 				<groupId>org.mongodb</groupId>
 				<artifactId>mongo-java-driver</artifactId>
 				<version>${version.org.mongodb}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.datastax.cassandra</groupId>
+				<artifactId>cassandra-driver-core</artifactId>
+				<version>${version.com.datastax.cassandra}</version>
 			</dependency>
 
 			<!-- Misc. -->
