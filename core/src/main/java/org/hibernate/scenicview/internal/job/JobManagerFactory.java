@@ -8,7 +8,7 @@ package org.hibernate.scenicview.internal.job;
 
 import java.util.Map;
 
-import org.hibernate.boot.registry.StandardServiceInitiator;
+import org.hibernate.boot.Metadata;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.scenicview.config.DenormalizationJobConfigurator;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
@@ -17,19 +17,21 @@ import org.hibernate.service.spi.ServiceRegistryImplementor;
  * @author Gunnar Morling
  *
  */
-public class JobManagerInitiator implements StandardServiceInitiator<JobManager> {
+public class JobManagerFactory {
 
-	public static final JobManagerInitiator INSTANCE = new JobManagerInitiator();
+	private final Metadata metadata;
+	private final Map<?, ?> configurationValues;
+	private final ServiceRegistryImplementor registry;
 
-	@Override
-	public Class<JobManager> getServiceInitiated() {
-		return JobManager.class;
+	public JobManagerFactory(Metadata metadata, Map<?, ?> configurationValues, ServiceRegistryImplementor registry) {
+		this.metadata = metadata;
+		this.configurationValues = configurationValues;
+		this.registry = registry;
 	}
 
-	@Override
-	public JobManager initiateService(Map configurationValues, ServiceRegistryImplementor registry) {
+	public JobManager getJobManager() {
 		DenormalizationJobConfigurator jobConfig = getJobConfig( configurationValues, registry.getService( ClassLoaderService.class ) );
-		return new JobManager( jobConfig );
+		return new JobManager( metadata, jobConfig );
 	}
 
 	private DenormalizationJobConfigurator getJobConfig(Map<?, ?> configurationValues, ClassLoaderService classLoaderService) {

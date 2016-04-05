@@ -23,6 +23,7 @@ import org.hibernate.scenicview.mongodb.internal.MongoDbDenormalizationBackend;
 import org.hibernate.scenicview.mongodb.internal.MongoDbDenormalizationBackend.Connection;
 import org.hibernate.scenicview.test.poc.model.Actor;
 import org.hibernate.scenicview.test.poc.model.Genre;
+import org.hibernate.scenicview.test.poc.model.Location;
 import org.hibernate.scenicview.test.poc.model.Money;
 import org.hibernate.scenicview.test.poc.model.Movie;
 import org.junit.After;
@@ -38,11 +39,12 @@ public class DenormalizationPoCIT {
 		public void configure(Builder builder) {
 			builder.newDenormalizationJob( "ActorsWithMoviesAndGenreAndRating" )
 				.withAggregateRoot( Actor.class )
-					.includingAssociation( Actor::getFavoriteGenre )
-					.includingAssociation( Actor::getPlayedIn )
-					.includingAssociation( Actor::getRatings )
-				.withCollectionName( "ActorWithDependencies" )
-				.withConnectionId( "some-mongo" )
+					.withAssociation( Actor::getFavoriteGenre )
+					.withCollection( Actor::getPlayedIn )
+						.includingCollection( Movie::getFilmedAt )
+					.withCollection( Actor::getRatings )
+				.usingCollectionName( "ActorWithDependencies" )
+				.usingConnectionId( "some-mongo" )
 				.build();
 		}
 	}
@@ -68,9 +70,17 @@ public class DenormalizationPoCIT {
 		EntityManager entityManager = entityManagerFactory.createEntityManager();
 		entityManager.getTransaction().begin();
 
+		Location location1 = new Location( "Orlando", 27.8 );
+		entityManager.persist( location1 );
+
+		Location location2 = new Location( "Helsinki", 8.9 );
+		entityManager.persist( location2 );
+
 		Movie movie1 = new Movie();
 		movie1.setName( "It happened in the winter" );
 		movie1.setYearOfRelease( 1980 );
+		movie1.getFilmedAt().add( location1 );
+		movie1.getFilmedAt().add( location2 );
 		entityManager.persist( movie1 );
 
 		Movie movie2 = new Movie();
@@ -109,7 +119,17 @@ public class DenormalizationPoCIT {
 					"'playedIn' : [" +
 						"{" +
 							" 'name' : 'It happened in the winter'," +
-							" 'yearOfRelease' : 1980" +
+							" 'yearOfRelease' : 1980," +
+							" 'filmedAt' : [" +
+								"{" +
+									" 'name' : 'Orlando'," +
+									" 'averageTemperature' : 27.8" +
+								"}," +
+								"{" +
+									" 'name' : 'Helsinki'," +
+									" 'averageTemperature' : 8.9" +
+								"}" +
+							"]" +
 						"}," +
 						"{" +
 							" 'name' : 'If you knew'," +

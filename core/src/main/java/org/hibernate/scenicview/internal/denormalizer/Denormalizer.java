@@ -50,7 +50,7 @@ public class Denormalizer {
 						return new EntityStateBasedTreeTraversalSequence(
 							typeProvider,
 							event.getState(),
-							config.getIncludedAssociations(),
+							config,
 							event.getSession(),
 							event.getPersister() );
 					}
@@ -69,7 +69,7 @@ public class Denormalizer {
 						return new EntityStateBasedTreeTraversalSequence(
 							typeProvider,
 							event.getState(),
-							config.getIncludedAssociations(),
+							config,
 							event.getSession(),
 							event.getPersister() );
 					}

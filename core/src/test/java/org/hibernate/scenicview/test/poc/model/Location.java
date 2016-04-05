@@ -6,30 +6,29 @@
  */
 package org.hibernate.scenicview.test.poc.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
-import javax.persistence.ManyToMany;
 
 /**
  * @author Gunnar Morling
  */
 @Entity
-public class Movie {
+public class Location {
 
 	@Id
 	@GeneratedValue
 	private long id;
-
 	private String name;
+	private double averageTemperature;
 
-	private int yearOfRelease;
+	Location() {
+	}
 
-	@ManyToMany
-	private List<Location> filmedAt = new ArrayList<>();
+	public Location(String name, double averageTemperature) {
+		this.name = name;
+		this.averageTemperature = averageTemperature;
+	}
 
 	public long getId() {
 		return id;
@@ -47,19 +46,11 @@ public class Movie {
 		this.name = name;
 	}
 
-	public int getYearOfRelease() {
-		return yearOfRelease;
+	public double getAverageTemperature() {
+		return averageTemperature;
 	}
 
-	public void setYearOfRelease(int yearOfRelease) {
-		this.yearOfRelease = yearOfRelease;
-	}
-
-	public List<Location> getFilmedAt() {
-		return filmedAt;
-	}
-
-	public void setFilmedAt(List<Location> filmedAt) {
-		this.filmedAt = filmedAt;
+	public void setAverageTemperature(double averageTemperature) {
+		this.averageTemperature = averageTemperature;
 	}
 }

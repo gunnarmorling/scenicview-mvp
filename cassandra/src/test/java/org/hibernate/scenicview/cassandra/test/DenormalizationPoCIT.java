@@ -38,12 +38,12 @@ public class DenormalizationPoCIT {
 		public void configure(Builder builder) {
 			builder.newDenormalizationJob( "ActorsWithMoviesAndGenreAndRating" )
 				.withAggregateRoot( Actor.class )
-					.includingAssociation( Actor::getFavoriteGenre )
-					.includingAssociation( Actor::getPlayedIn )
-						.includeId( true )
-					.includingAssociation( Actor::getRatings )
-				.withCollectionName( "ActorWithDependencies" )
-				.withConnectionId( "some-cassandra" )
+					.withAssociation( Actor::getFavoriteGenre )
+					.withAssociation( Actor::getPlayedIn )
+						.includingId( true )
+					.withAssociation( Actor::getRatings )
+				.usingCollectionName( "ActorWithDependencies" )
+				.usingConnectionId( "some-cassandra" )
 				.build();
 		}
 	}

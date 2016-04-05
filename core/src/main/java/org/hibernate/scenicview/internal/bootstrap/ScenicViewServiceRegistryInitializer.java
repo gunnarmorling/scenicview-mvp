@@ -8,7 +8,6 @@ package org.hibernate.scenicview.internal.bootstrap;
 
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.scenicview.internal.backend.BackendManagerInitiator;
-import org.hibernate.scenicview.internal.job.JobManagerInitiator;
 import org.hibernate.scenicview.internal.transaction.TransactionContextManagerInitiator;
 import org.hibernate.service.spi.ServiceContributor;
 
@@ -21,7 +20,6 @@ public class ScenicViewServiceRegistryInitializer implements ServiceContributor 
 
 	@Override
 	public void contribute(StandardServiceRegistryBuilder serviceRegistryBuilder) {
-		serviceRegistryBuilder.addInitiator( JobManagerInitiator.INSTANCE );
 		serviceRegistryBuilder.addInitiator( BackendManagerInitiator.INSTANCE );
 		serviceRegistryBuilder.addInitiator( TransactionContextManagerInitiator.INSTANCE );
 	}

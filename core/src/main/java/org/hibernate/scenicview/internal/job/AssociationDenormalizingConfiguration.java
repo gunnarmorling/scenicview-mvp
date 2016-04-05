@@ -6,6 +6,10 @@
  */
 package org.hibernate.scenicview.internal.job;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.hibernate.scenicview.internal.model.PropertyPath;
 
 /**
  * @author Gunnar Morling
@@ -13,16 +17,16 @@ package org.hibernate.scenicview.internal.job;
  */
 public class AssociationDenormalizingConfiguration {
 
-	private final String name;
+	private final PropertyPath propertyPath;
 	private final boolean includeId;
 
-	private AssociationDenormalizingConfiguration(String name, boolean includeId) {
-		this.name = name;
+	private AssociationDenormalizingConfiguration(PropertyPath propertyPath, boolean includeId) {
+		this.propertyPath = propertyPath;
 		this.includeId = includeId;
 	}
 
-	public String getName() {
-		return name;
+	public PropertyPath getPropertyPath() {
+		return propertyPath;
 	}
 
 	public boolean isIncludeId() {
@@ -31,16 +35,17 @@ public class AssociationDenormalizingConfiguration {
 
 	@Override
 	public String toString() {
-		return "AssociationDenormalizingConfiguration [name=" + name + ", includeId=" + includeId + "]";
+		return "AssociationDenormalizingConfiguration [propertyPath=" + propertyPath + ", includeId=" + includeId + "]";
 	}
 
 	static class AssociationDenormalizingConfigurationBuilder {
 
-		private final String name;
+		private final List<String> propertyPath;
 		private boolean includeId;
 
 		public AssociationDenormalizingConfigurationBuilder(String name) {
-			this.name = name;
+			propertyPath = new ArrayList<>();
+			propertyPath.add( name );
 		}
 
 		AssociationDenormalizingConfigurationBuilder includeId(boolean includeId) {
@@ -48,8 +53,12 @@ public class AssociationDenormalizingConfiguration {
 			return this;
 		}
 
+		public void add(String name) {
+			propertyPath.add( name );
+		}
+
 		AssociationDenormalizingConfiguration build() {
-			return new AssociationDenormalizingConfiguration( name, includeId );
+			return new AssociationDenormalizingConfiguration( new PropertyPath( propertyPath ), includeId );
 		}
 	}
 }

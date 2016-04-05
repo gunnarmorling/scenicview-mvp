@@ -6,6 +6,8 @@
  */
 package org.hibernate.scenicview.config;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.function.Function;
 
 /**
@@ -32,16 +34,29 @@ public interface DenormalizationJobConfigurator {
 		<T> EntityBuildingContext<T> withAggregateRoot(Class<T> aggregateRootType);
 	}
 
-	public interface EntityBuildingContext<T> {
+	public interface EntityBuildingContext<E> {
 
-		EntityBuildingContext<T> includingAssociation(Function<T, ?> associationProperty);
+		<A> AssociationBuildingContext<E, A> withAssociation(Function<E, A> associationProperty);
 
-		EntityBuildingContext<T> includeId(boolean includeId);
+		<A> AssociationBuildingContext<E, A> withCollection(Function<E, Collection<A>> associationProperty);
 
-		EntityBuildingContext<T> withConnectionId(String connectionId);
+		<A> AssociationBuildingContext<E, A> withMap(Function<E, Map<?, A>> associationProperty);
 
-		EntityBuildingContext<T> withCollectionName(String collectionName);
+		EntityBuildingContext<E> usingConnectionId(String connectionId);
+
+		EntityBuildingContext<E> usingCollectionName(String collectionName);
 
 		void build();
+	}
+
+	public interface AssociationBuildingContext<E, A> extends EntityBuildingContext<E> {
+
+		EntityBuildingContext<E> includingId(boolean includeId);
+
+		<B> AssociationBuildingContext<E, B> includingAssociation(Function<A, B> associationProperty);
+
+		<B> AssociationBuildingContext<E, B> includingCollection(Function<A, Collection<B>> associationProperty);
+
+		<B> AssociationBuildingContext<E, B> includingMap(Function<A, Map<?, B>> associationProperty);
 	}
 }

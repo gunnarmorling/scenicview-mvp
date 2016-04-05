@@ -6,7 +6,10 @@
  */
 package org.hibernate.scenicview.internal.bootstrap;
 
+import java.util.Map;
+
 import org.hibernate.boot.Metadata;
+import org.hibernate.engine.config.spi.ConfigurationService;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EventType;
@@ -14,6 +17,7 @@ import org.hibernate.integrator.spi.Integrator;
 import org.hibernate.scenicview.internal.DenormalizationListener;
 import org.hibernate.scenicview.internal.backend.BackendManager;
 import org.hibernate.scenicview.internal.job.JobManager;
+import org.hibernate.scenicview.internal.job.JobManagerFactory;
 import org.hibernate.scenicview.internal.transaction.TransactionContextManager;
 import org.hibernate.service.spi.SessionFactoryServiceRegistry;
 
@@ -27,7 +31,10 @@ public class ScenicViewIntegrator implements Integrator {
 	public void integrate(Metadata metadata, SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
 		EventListenerRegistry listenerRegistry = serviceRegistry.getService( EventListenerRegistry.class );
 
-		JobManager jobManager = serviceRegistry.getService( JobManager.class );
+		// TODO JobManager is not a service for now as we cannot easily customize services needing access to metadata
+		Map<?, ?> settings = serviceRegistry.getService( ConfigurationService.class ).getSettings();
+		JobManager jobManager = new JobManagerFactory( metadata, settings, serviceRegistry ).getJobManager();
+
 		BackendManager backendManager = serviceRegistry.getService( BackendManager.class );
 		TransactionContextManager transactionContextManager = serviceRegistry.getService( TransactionContextManager.class );
 

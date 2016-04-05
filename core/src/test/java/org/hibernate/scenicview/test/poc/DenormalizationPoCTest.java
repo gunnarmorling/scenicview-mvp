@@ -19,6 +19,7 @@ import javax.persistence.Persistence;
 import org.hibernate.scenicview.config.DenormalizationJobConfigurator;
 import org.hibernate.scenicview.test.poc.model.Actor;
 import org.hibernate.scenicview.test.poc.model.Genre;
+import org.hibernate.scenicview.test.poc.model.Location;
 import org.hibernate.scenicview.test.poc.model.Money;
 import org.hibernate.scenicview.test.poc.model.Movie;
 import org.hibernate.scenicview.testutil.simplejsonbackend.SimpleJsonStoreBackend;
@@ -33,9 +34,10 @@ public class DenormalizationPoCTest {
 		public void configure(Builder builder) {
 			builder.newDenormalizationJob( "ActorsWithMoviesAndGenreAndRatings" )
 				.withAggregateRoot( Actor.class )
-					.includingAssociation( Actor::getFavoriteGenre )
-					.includingAssociation( Actor::getPlayedIn )
-					.includingAssociation( Actor::getRatings )
+					.withAssociation( Actor::getFavoriteGenre )
+					.withCollection( Actor::getPlayedIn )
+						.includingCollection( Movie::getFilmedAt )
+					.withCollection( Actor::getRatings )
 
 					// TODO All basic props are included by default; enable to exclude some
 					// .excludingProperty( Actor::getSomeBasicProp )
@@ -45,8 +47,8 @@ public class DenormalizationPoCTest {
 					// support
 					// .withId( Actor::getEmail )
 
-				.withCollectionName( "ActorWithDependencies" )
-				.withConnectionId( "some-map" )
+				.usingCollectionName( "ActorWithDependencies" )
+				.usingConnectionId( "some-map" )
 				.build();
 		}
 	}
@@ -72,9 +74,17 @@ public class DenormalizationPoCTest {
 		EntityManager entityManager = entityManagerFactory.createEntityManager();
 		entityManager.getTransaction().begin();
 
+		Location location1 = new Location( "Orlando", 27.8 );
+		entityManager.persist( location1 );
+
+		Location location2 = new Location( "Helsinki", 8.9 );
+		entityManager.persist( location2 );
+
 		Movie movie1 = new Movie();
 		movie1.setName( "It happened in the winter" );
 		movie1.setYearOfRelease( 1980 );
+		movie1.getFilmedAt().add( location1 );
+		movie1.getFilmedAt().add( location2 );
 		entityManager.persist( movie1 );
 
 		Movie movie2 = new Movie();
@@ -111,7 +121,17 @@ public class DenormalizationPoCTest {
 					"'playedIn' : [" +
 						"{" +
 							" 'name' : 'It happened in the winter'," +
-							" 'yearOfRelease' : 1980" +
+							" 'yearOfRelease' : 1980," +
+							" 'filmedAt' : [" +
+								"{" +
+									" 'name' : 'Orlando'," +
+									" 'averageTemperature' : 27.8" +
+								"}," +
+								"{" +
+									" 'name' : 'Helsinki'," +
+									" 'averageTemperature' : 8.9" +
+								"}," +
+							"]," +
 						"}," +
 						"{" +
 							" 'name' : 'If you knew'," +
